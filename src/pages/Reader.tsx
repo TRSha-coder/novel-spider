@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Chapter, Novel } from '../types';
 import { getChapterById, getNovelById, getChaptersByNovelId } from '../api';
-import { ArrowLeft, ChevronLeft, ChevronRight, Home, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Home, Loader2, ExternalLink } from 'lucide-react';
+import { saveProgress } from '../hooks/useReadingProgress';
+
+const NAROU_BASE = 'https://ncode.syosetu.com';
 
 export const Reader = () => {
   const { novelId, chapterId } = useParams<{ novelId: string; chapterId: string }>();
@@ -35,17 +38,30 @@ export const Reader = () => {
     fetchData();
   }, [novelId, chapterId]);
 
+  // 自動保存：小説とチャプターが揃ったら進捗を記録
+  useEffect(() => {
+    if (!novel || !chapter || !novelId || !chapterId) return;
+    saveProgress({
+      novelId,
+      novelTitle: novel.title,
+      novelCover: novel.cover,
+      novelAuthor: novel.author,
+      chapterId,
+      chapterNumber: chapter.number,
+      chapterTitle: chapter.title,
+    });
+  }, [novel, chapter, novelId, chapterId]);
+
   const currentIndex = chapters.findIndex(c => c.id === chapterId);
   const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
   const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
 
-  const increaseFontSize = () => {
-    if (fontSize < 28) setFontSize(fontSize + 2);
-  };
-
-  const decreaseFontSize = () => {
-    if (fontSize > 12) setFontSize(fontSize - 2);
-  };
+  // 原文URL：短編(number=0)はルート、連載は /number/
+  const originalUrl = chapter
+    ? chapter.number === 0
+      ? `${NAROU_BASE}/${novelId}/`
+      : `${NAROU_BASE}/${novelId}/${chapter.number}/`
+    : `${NAROU_BASE}/${novelId}/`;
 
   if (loading) {
     return (
@@ -73,7 +89,7 @@ export const Reader = () => {
     );
   }
 
-  const paragraphs = chapter.content.split('\n\n');
+  const paragraphs = chapter.content.split('\n\n').filter(p => p.trim());
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -88,21 +104,31 @@ export const Reader = () => {
               <span className="hidden sm:inline">戻る</span>
             </Link>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1">
               <button
-                onClick={decreaseFontSize}
+                onClick={() => setFontSize(f => Math.max(12, f - 2))}
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
                 title="文字を小さく"
               >
                 <span className="text-lg font-bold">A-</span>
               </button>
               <button
-                onClick={increaseFontSize}
+                onClick={() => setFontSize(f => Math.min(28, f + 2))}
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
                 title="文字を大きく"
               >
                 <span className="text-lg font-bold">A+</span>
               </button>
+              <a
+                href={originalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-1 px-3 py-1.5 text-sm text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg border border-indigo-200"
+                title="なろうで原文を読む"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span className="hidden sm:inline">原文</span>
+              </a>
               <Link
                 to="/"
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
@@ -135,7 +161,20 @@ export const Reader = () => {
           </div>
         </article>
 
-        <div className="flex items-center justify-between mt-8">
+        {/* 原文リンク（本文下） */}
+        <div className="mt-6 text-center">
+          <a
+            href={originalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center space-x-2 px-5 py-2 text-sm text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-300 rounded-lg transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span>小説家になろうで原文を読む</span>
+          </a>
+        </div>
+
+        <div className="flex items-center justify-between mt-6">
           {prevChapter ? (
             <Link
               to={`/novel/${novelId}/chapter/${prevChapter.id}`}
@@ -143,8 +182,8 @@ export const Reader = () => {
             >
               <ChevronLeft className="h-5 w-5" />
               <div className="text-left">
-                <p className="text-sm text-gray-500">前の章</p>
-                <p className="font-medium truncate max-w-32">第{prevChapter.number}章</p>
+                <p className="text-sm text-gray-500">前の話</p>
+                <p className="font-medium truncate max-w-32">第{prevChapter.number}話</p>
               </div>
             </Link>
           ) : (
@@ -157,8 +196,8 @@ export const Reader = () => {
               className="flex items-center space-x-2 bg-white px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-shadow text-gray-700"
             >
               <div className="text-right">
-                <p className="text-sm text-gray-500">次の章</p>
-                <p className="font-medium truncate max-w-32">第{nextChapter.number}章</p>
+                <p className="text-sm text-gray-500">次の話</p>
+                <p className="font-medium truncate max-w-32">第{nextChapter.number}話</p>
               </div>
               <ChevronRight className="h-5 w-5" />
             </Link>
