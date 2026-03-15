@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Novel, Chapter } from '../types';
 import { getNovelById, getChaptersByNovelId } from '../api';
-import { ArrowLeft, Star, Calendar, BookOpen, Loader2, BookMarked, ExternalLink, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Star, Calendar, BookOpen, Loader2, BookMarked, RotateCcw } from 'lucide-react';
 import { getNovelProgress, ReadingRecord } from '../hooks/useReadingProgress';
-
-const NAROU_BASE = 'https://ncode.syosetu.com';
 
 export const NovelDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -58,8 +56,6 @@ export const NovelDetail = () => {
       </div>
     );
   }
-
-  const originalUrl = `${NAROU_BASE}/${novel.id}/`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -135,16 +131,6 @@ export const NovelDetail = () => {
                 </Link>
               ) : null}
 
-              {/* 原文リンク */}
-              <a
-                href={originalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 bg-white text-gray-600 px-6 py-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-              >
-                <ExternalLink className="h-5 w-5" />
-                <span>なろうで読む</span>
-              </a>
             </div>
           </div>
         </div>
