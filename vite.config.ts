@@ -14,6 +14,7 @@ export default defineConfig(({ command }) => {
         },
       },
     },
-    base: isProd ? '/novel-spider/' : '/',
+    // GitHub Pages 需要 /novel-spider/ 前缀，Vercel 部署在根路径
+    base: process.env.GITHUB_PAGES ? '/novel-spider/' : '/',
   }
 })
