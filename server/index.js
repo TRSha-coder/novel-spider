@@ -223,7 +223,12 @@ app.get('/api/novel/:ncode/chapter/:num', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Novel Spider server running at http://localhost:${PORT}`);
-});
+// Vercel serverless: export app instead of listening
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Novel Spider server running at http://localhost:${PORT}`);
+  });
+}
+
+export default app;
