@@ -2,6 +2,7 @@ import express from 'express';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import cors from 'cors';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const app = express();
 app.use(cors());
@@ -12,6 +13,11 @@ const NAROU_RANK_API = 'https://api.syosetu.com/rank/rankget/';
 const NAROU_CONTENT = 'https://ncode.syosetu.com';
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+
+// Use system HTTPS proxy if available (required in sandboxed environments)
+const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy;
+const httpsAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
+const PROXY_CONFIG = httpsAgent ? { httpsAgent, proxy: false } : {};
 
 // Narou API fields: t=title w=writer s=story n=ncode gl=general_lastup end=end ga=general_all_no gp=global_point ah=all_hyoka_cnt
 const API_FIELDS = 't-w-s-n-gl-end-ga-gp-ah';
@@ -39,6 +45,7 @@ async function fetchNovelsByNcodes(ncodes) {
   const res = await axios.get(NAROU_API, {
     params: { of: API_FIELDS, out: 'json', ncode: ncodes.join('-'), lim: ncodes.length },
     headers: { 'User-Agent': UA },
+    ...PROXY_CONFIG,
   });
   return (res.data || []).slice(1).map(formatNovel);
 }
@@ -53,6 +60,7 @@ app.get('/api/popular', async (req, res) => {
     const rankRes = await axios.get(NAROU_RANK_API, {
       params: { rtype, out: 'json' },
       headers: { 'User-Agent': UA },
+      ...PROXY_CONFIG,
     });
     const ncodes = (rankRes.data || []).slice(0, limit).map(r => r.ncode).filter(Boolean);
     if (!ncodes.length) return res.json([]);
@@ -71,6 +79,7 @@ app.get('/api/latest', async (req, res) => {
     const apiRes = await axios.get(NAROU_API, {
       params: { of: API_FIELDS, out: 'json', order: 'new', lim: limit },
       headers: { 'User-Agent': UA },
+      ...PROXY_CONFIG,
     });
     const novels = (apiRes.data || []).slice(1).map(formatNovel);
     res.json(novels);
@@ -88,7 +97,7 @@ app.get('/api/search', async (req, res) => {
     const st = (parseInt(page) - 1) * lim + 1;
     const params = { of: API_FIELDS, out: 'json', order: 'hyoka', lim, st };
     if (q.trim()) params.word = q.trim();
-    const apiRes = await axios.get(NAROU_API, { params, headers: { 'User-Agent': UA } });
+    const apiRes = await axios.get(NAROU_API, { params, headers: { 'User-Agent': UA }, ...PROXY_CONFIG });
     const [meta, ...items] = apiRes.data || [{ allcount: 0 }];
     const novels = items.map(formatNovel);
     res.json({ novels, total: meta.allcount || 0, hasMore: st + lim - 1 < (meta.allcount || 0) });
@@ -105,6 +114,7 @@ app.get('/api/novel/:ncode', async (req, res) => {
     const apiRes = await axios.get(NAROU_API, {
       params: { of: API_FIELDS, out: 'json', ncode },
       headers: { 'User-Agent': UA },
+      ...PROXY_CONFIG,
     });
     const items = (apiRes.data || []).slice(1);
     if (!items.length) return res.status(404).json({ error: 'Novel not found' });
@@ -138,14 +148,14 @@ app.get('/api/novel/:ncode/chapters', async (req, res) => {
   try {
     const ncode = req.params.ncode.toLowerCase();
     const url = `${NAROU_CONTENT}/${ncode}/`;
-    const htmlRes = await axios.get(url, { headers: { 'User-Agent': UA } });
+    const htmlRes = await axios.get(url, { headers: { 'User-Agent': UA }, ...PROXY_CONFIG });
     const { chapters, totalPages } = parseTocHtml(htmlRes.data, ncode);
 
     // Fetch additional pages if any (Narou paginates at 100 episodes per page)
     if (totalPages > 1) {
       const pagePromises = [];
       for (let p = 2; p <= Math.min(totalPages, 10); p++) {
-        pagePromises.push(axios.get(`${url}?p=${p}`, { headers: { 'User-Agent': UA } }));
+        pagePromises.push(axios.get(`${url}?p=${p}`, { headers: { 'User-Agent': UA }, ...PROXY_CONFIG }));
       }
       const pageResults = await Promise.all(pagePromises);
       for (const pr of pageResults) {
@@ -181,7 +191,7 @@ app.get('/api/novel/:ncode/chapter/:num', async (req, res) => {
     const url = num === 0
       ? `${NAROU_CONTENT}/${ncode}/`
       : `${NAROU_CONTENT}/${ncode}/${num}/`;
-    const htmlRes = await axios.get(url, { headers: { 'User-Agent': UA } });
+    const htmlRes = await axios.get(url, { headers: { 'User-Agent': UA }, ...PROXY_CONFIG });
     const $ = cheerio.load(htmlRes.data);
 
     // New Narou UI uses .p-novel__title, old uses .novel_subtitle
