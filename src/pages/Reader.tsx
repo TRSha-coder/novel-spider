@@ -22,7 +22,7 @@ export const Reader = () => {
   const tocRef = useRef<HTMLDivElement>(null);
   const currentItemRef = useRef<HTMLButtonElement>(null);
 
-  // データ取得
+  // 获取数据
   useEffect(() => {
     if (!novelId || !chapterId) return;
     const fetchData = async () => {
@@ -45,13 +45,13 @@ export const Reader = () => {
     fetchData();
   }, [novelId, chapterId]);
 
-  // 章が変わったらトップへスクロール
+  // 切换章节时滚动到顶部
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTocOpen(false);
   }, [chapterId]);
 
-  // 進捗保存
+  // 保存阅读进度
   useEffect(() => {
     if (!novel || !chapter || !novelId || !chapterId) return;
     saveProgress({
@@ -65,7 +65,7 @@ export const Reader = () => {
     });
   }, [novel, chapter, novelId, chapterId]);
 
-  // スクロール進捗バー + トップに戻るボタン
+  // 滚动进度条 + 返回顶部按钮
   useEffect(() => {
     const onScroll = () => {
       const el = document.documentElement;
@@ -77,7 +77,7 @@ export const Reader = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // 目次を開いたとき現在の話へスクロール
+  // 打开目录时滚动到当前章节
   useEffect(() => {
     if (tocOpen && currentItemRef.current) {
       setTimeout(() => {
@@ -86,7 +86,7 @@ export const Reader = () => {
     }
   }, [tocOpen]);
 
-  // キーボード操作（←→で前後の話）
+  // 键盘左右键切换章节
   useEffect(() => {
     if (!novelId || chapters.length === 0) return;
     const currentIndex = chapters.findIndex(c => c.id === chapterId);
@@ -112,7 +112,7 @@ export const Reader = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-        <span className="ml-2 text-gray-600">読み込み中...</span>
+        <span className="ml-2 text-gray-600">加载中...</span>
       </div>
     );
   }
@@ -121,10 +121,10 @@ export const Reader = () => {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center py-12">
-          <p className="text-xl text-gray-500">章が見つかりませんでした</p>
+          <p className="text-xl text-gray-500">未找到该章节</p>
           <Link to={`/novel/${novelId}`} className="inline-flex items-center space-x-2 mt-4 text-indigo-600 hover:text-indigo-700">
             <ArrowLeft className="h-4 w-4" />
-            <span>小説詳細に戻る</span>
+            <span>返回小说详情</span>
           </Link>
         </div>
       </div>
@@ -136,7 +136,7 @@ export const Reader = () => {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* 読書進捗バー */}
+      {/* 阅读进度条 */}
       <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200">
         <div
           className="h-full bg-indigo-500 transition-all duration-100"
@@ -144,7 +144,7 @@ export const Reader = () => {
         />
       </div>
 
-      {/* ナビバー */}
+      {/* 顶部导航栏 */}
       <nav className="bg-white shadow-sm sticky top-1 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
@@ -153,12 +153,12 @@ export const Reader = () => {
               className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span className="hidden sm:inline text-sm">目次</span>
+              <span className="hidden sm:inline text-sm">目录</span>
             </Link>
 
-            {/* 話タイトル（中央） */}
+            {/* 章节标题（居中） */}
             <p className="text-sm font-medium text-gray-700 truncate max-w-[40%] text-center">
-              第{chapter.number}話
+              第{chapter.number}话
             </p>
 
             <div className="flex items-center space-x-1">
@@ -173,11 +173,11 @@ export const Reader = () => {
               <button
                 onClick={() => setTocOpen(true)}
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
-                title="目次"
+                title="目录"
               >
                 <List className="h-5 w-5" />
               </button>
-              <Link to="/" className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg" title="ホーム">
+              <Link to="/" className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg" title="首页">
                 <Home className="h-5 w-5" />
               </Link>
             </div>
@@ -185,17 +185,17 @@ export const Reader = () => {
         </div>
       </nav>
 
-      {/* 目次ドロワー */}
+      {/* 目录抽屉 */}
       {tocOpen && (
         <div className="fixed inset-0 z-50 flex">
-          {/* オーバーレイ */}
+          {/* 遮罩 */}
           <div className="flex-1 bg-black/40" onClick={() => setTocOpen(false)} />
-          {/* ドロワー本体 */}
+          {/* 抽屉主体 */}
           <div ref={tocRef} className="w-80 max-w-[90vw] bg-white h-full flex flex-col shadow-xl">
             <div className="flex items-center justify-between p-4 border-b">
               <div>
                 <h3 className="font-bold text-gray-800 text-sm line-clamp-1">{novel.title}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{chapters.length}話</p>
+                <p className="text-xs text-gray-500 mt-0.5">共{chapters.length}话</p>
               </div>
               <button onClick={() => setTocOpen(false)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="h-5 w-5 text-gray-500" />
@@ -215,7 +215,7 @@ export const Reader = () => {
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <p className="text-sm line-clamp-1">第{ch.number}話　{ch.title}</p>
+                    <p className="text-sm line-clamp-1">第{ch.number}话　{ch.title}</p>
                     {ch.publishDate && (
                       <p className="text-xs text-gray-400 mt-0.5">{ch.publishDate}</p>
                     )}
@@ -227,11 +227,11 @@ export const Reader = () => {
         </div>
       )}
 
-      {/* 本文エリア */}
+      {/* 正文区域 */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <header className="mb-8 text-center">
           <h1 className="text-xl font-bold text-gray-700 mb-1">{novel.title}</h1>
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">第{chapter.number}話　{chapter.title}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">第{chapter.number}话　{chapter.title}</h2>
           {chapter.publishDate && <p className="text-sm text-gray-400">{chapter.publishDate}</p>}
         </header>
 
@@ -248,7 +248,7 @@ export const Reader = () => {
           </div>
         </article>
 
-        {/* 前後ナビ */}
+        {/* 上一话/下一话导航 */}
         <div className="flex items-center justify-between mt-8 gap-4">
           {prevChapter ? (
             <Link
@@ -257,8 +257,8 @@ export const Reader = () => {
             >
               <ChevronLeft className="h-5 w-5 flex-shrink-0" />
               <div className="text-left min-w-0">
-                <p className="text-xs text-gray-400">前の話</p>
-                <p className="font-medium text-sm truncate">第{prevChapter.number}話　{prevChapter.title}</p>
+                <p className="text-xs text-gray-400">上一话</p>
+                <p className="font-medium text-sm truncate">第{prevChapter.number}话　{prevChapter.title}</p>
               </div>
             </Link>
           ) : <div className="flex-1" />}
@@ -269,8 +269,8 @@ export const Reader = () => {
               className="flex items-center space-x-2 flex-1 bg-indigo-600 px-5 py-4 rounded-lg shadow-sm hover:bg-indigo-700 transition-colors text-white"
             >
               <div className="text-right flex-1 min-w-0">
-                <p className="text-xs text-indigo-200">次の話</p>
-                <p className="font-medium text-sm truncate">第{nextChapter.number}話　{nextChapter.title}</p>
+                <p className="text-xs text-indigo-200">下一话</p>
+                <p className="font-medium text-sm truncate">第{nextChapter.number}话　{nextChapter.title}</p>
               </div>
               <ChevronRight className="h-5 w-5 flex-shrink-0" />
             </Link>
@@ -281,21 +281,21 @@ export const Reader = () => {
                 className="inline-flex items-center space-x-2 bg-white px-5 py-4 rounded-lg shadow-sm hover:shadow-md transition-shadow text-gray-600"
               >
                 <ArrowLeft className="h-5 w-5" />
-                <span className="font-medium text-sm">目次に戻る</span>
+                <span className="font-medium text-sm">返回目录</span>
               </Link>
             </div>
           )}
         </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6">← → キーで前後の話に移動</p>
+        <p className="text-center text-xs text-gray-300 mt-6">← → 方向键切换章节</p>
       </div>
 
-      {/* トップに戻るボタン */}
+      {/* 返回顶部按钮 */}
       {showTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="fixed bottom-6 right-6 z-40 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
-          title="トップに戻る"
+          title="返回顶部"
         >
           <ChevronUp className="h-5 w-5" />
         </button>

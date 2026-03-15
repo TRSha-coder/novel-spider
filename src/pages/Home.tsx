@@ -39,7 +39,7 @@ export const Home = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl text-gray-600">読み込み中...</div>
+        <div className="text-xl text-gray-600">加载中...</div>
       </div>
     );
   }
@@ -47,20 +47,20 @@ export const Home = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
 
-      {/* 最近読んだ */}
+      {/* 最近阅读 */}
       {history.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-2">
               <BookOpen className="h-8 w-8 text-emerald-600" />
-              <h2 className="text-2xl font-bold text-gray-800">最近読んだ</h2>
+              <h2 className="text-2xl font-bold text-gray-800">最近阅读</h2>
             </div>
             <button
               onClick={handleClearHistory}
               className="flex items-center space-x-1 text-sm text-gray-400 hover:text-red-500 transition-colors"
             >
               <Trash2 className="h-4 w-4" />
-              <span>履歴を削除</span>
+              <span>清除历史</span>
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -78,7 +78,7 @@ export const Home = () => {
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-800 text-sm line-clamp-2">{record.novelTitle}</p>
                   <p className="text-xs text-gray-500 mt-1">{record.novelAuthor}</p>
-                  <p className="text-xs text-emerald-600 mt-1 font-medium">第{record.chapterNumber}話まで読了</p>
+                  <p className="text-xs text-emerald-600 mt-1 font-medium">已读至第{record.chapterNumber}话</p>
                 </div>
               </Link>
             ))}
@@ -86,11 +86,11 @@ export const Home = () => {
         </div>
       )}
 
-      {/* 人気小説 */}
+      {/* 热门小说 */}
       <div>
         <div className="flex items-center space-x-2 mb-6">
           <TrendingUp className="h-8 w-8 text-indigo-600" />
-          <h2 className="text-2xl font-bold text-gray-800">人気小説</h2>
+          <h2 className="text-2xl font-bold text-gray-800">热门小说</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
           {popularNovels.map((novel) => (

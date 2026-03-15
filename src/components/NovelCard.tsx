@@ -19,7 +19,7 @@ export const NovelCard = ({ novel }: NovelCardProps) => {
     ? `/novel/${novel.id}/chapter/${progress.chapterId}`
     : `/novel/${novel.id}/chapter/${firstChapterId}`;
 
-  const readLabel = progress ? `第${progress.chapterNumber}話から続きを読む` : '読む';
+  const readLabel = progress ? `从第${progress.chapterNumber}话继续阅读` : '阅读';
 
   const handleRead = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -42,7 +42,7 @@ export const NovelCard = ({ novel }: NovelCardProps) => {
                 ? 'bg-green-500 text-white'
                 : 'bg-gray-500 text-white'
             }`}>
-              {novel.status === 'ongoing' ? '連載中' : '完結'}
+              {novel.status === 'ongoing' ? '连载中' : '已完结'}
             </span>
           </div>
         </div>
@@ -66,7 +66,7 @@ export const NovelCard = ({ novel }: NovelCardProps) => {
         </div>
       </Link>
 
-      {/* 読むボタン */}
+      {/* 阅读按钮 */}
       <div className="px-4 pb-4 pt-2 mt-auto">
         <button
           onClick={handleRead}

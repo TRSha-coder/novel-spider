@@ -8,16 +8,16 @@ export const Header = () => {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-2">
             <BookOpen className="h-8 w-8" />
-            <span className="text-xl font-bold">日本小説クローラー</span>
+            <span className="text-xl font-bold">日文小说阅读器</span>
           </Link>
           <nav className="flex items-center space-x-6">
             <Link to="/" className="flex items-center space-x-1 hover:text-indigo-200 transition-colors">
               <Home className="h-5 w-5" />
-              <span>ホーム</span>
+              <span>首页</span>
             </Link>
             <Link to="/search" className="flex items-center space-x-1 hover:text-indigo-200 transition-colors">
               <Search className="h-5 w-5" />
-              <span>検索</span>
+              <span>搜索</span>
             </Link>
           </nav>
         </div>
