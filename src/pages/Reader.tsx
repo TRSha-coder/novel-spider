@@ -118,7 +118,7 @@ export const Reader = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <header className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">{novel.title}</h1>
-          <h2 className="text-xl text-gray-600 mb-2">第{chapter.number}章: {chapter.title}</h2>
+          <h2 className="text-xl text-gray-600 mb-2">第{chapter.number}話　{chapter.title}</h2>
           <p className="text-sm text-gray-500">{chapter.publishDate}</p>
         </header>
 

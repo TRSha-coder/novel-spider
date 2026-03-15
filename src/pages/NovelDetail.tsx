@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Novel, Chapter } from '../types';
 import { getNovelById, getChaptersByNovelId } from '../api';
-import { ArrowLeft, Eye, Star, Calendar, BookOpen, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, Star, Calendar, BookOpen, Loader2, BookMarked } from 'lucide-react';
 
 export const NovelDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -89,15 +89,21 @@ export const NovelDetail = () => {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">{novel.title}</h1>
             <p className="text-lg text-gray-600 mb-4">作者: {novel.author}</p>
 
-            <div className="flex items-center space-x-6 mb-6 text-gray-600">
+            <div className="flex flex-wrap gap-4 mb-6 text-gray-600">
               <div className="flex items-center space-x-1">
                 <Eye className="h-5 w-5" />
-                <span>{novel.views.toLocaleString()} 閲覧</span>
+                <span>{novel.views.toLocaleString()} pt</span>
               </div>
               <div className="flex items-center space-x-1">
                 <Star className="h-5 w-5 text-yellow-500" />
                 <span>{novel.rating}</span>
               </div>
+              {novel.chapterCount !== undefined && novel.chapterCount > 0 && (
+                <div className="flex items-center space-x-1">
+                  <BookMarked className="h-5 w-5" />
+                  <span>{novel.chapterCount} 話</span>
+                </div>
+              )}
               <div className="flex items-center space-x-1">
                 <Calendar className="h-5 w-5" />
                 <span>{novel.lastUpdate}</span>
@@ -135,7 +141,7 @@ export const NovelDetail = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-gray-800">
-                      第{chapter.number}章: {chapter.title}
+                      第{chapter.number}話　{chapter.title}
                     </h3>
                     <p className="text-sm text-gray-500">{chapter.publishDate}</p>
                   </div>

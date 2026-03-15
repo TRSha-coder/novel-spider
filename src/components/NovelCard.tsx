@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Novel } from '../types';
-import { Eye, Star, Calendar } from 'lucide-react';
+import { Star, Calendar } from 'lucide-react';
 
 interface NovelCardProps {
   novel: Novel;
@@ -35,12 +35,8 @@ export const NovelCard = ({ novel }: NovelCardProps) => {
           </p>
           <div className="flex items-center justify-between text-sm text-gray-500">
             <div className="flex items-center space-x-1">
-              <Eye className="h-4 w-4" />
-              <span>{novel.views.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Star className="h-4 w-4 text-yellow-500" />
-              <span>{novel.rating}</span>
+              <Star className="h-4 w-4 text-orange-400" />
+              <span>{novel.views.toLocaleString()}pt</span>
             </div>
             <div className="flex items-center space-x-1">
               <Calendar className="h-4 w-4" />

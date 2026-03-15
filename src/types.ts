@@ -8,6 +8,7 @@ export interface Novel {
   views: number;
   rating: number;
   lastUpdate: string;
+  chapterCount?: number;
 }
 
 export interface Chapter {
