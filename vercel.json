@@ -5,6 +5,8 @@
     { "source": "/api/popular", "destination": "/api/index" },
     { "source": "/api/latest", "destination": "/api/index" },
     { "source": "/api/search", "destination": "/api/index" },
+    { "source": "/api/novel/:ncode/chapters", "destination": "/api/index" },
+    { "source": "/api/novel/:ncode/chapter/:num", "destination": "/api/index" },
     { "source": "/api/novel/:ncode", "destination": "/api/index" }
   ]
 }
