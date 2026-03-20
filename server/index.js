@@ -11,6 +11,26 @@ const NAROU_API = 'https://api.syosetu.com/novelapi/api/';
 const NAROU_RANK_API = 'https://api.syosetu.com/rank/rankget/';
 const NAROU_CONTENT = 'https://ncode.syosetu.com';
 
+// 模拟真实浏览器请求头，绕过 syosetu 的 IP 封锁
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Connection': 'keep-alive',
+  'Cache-Control': 'no-cache',
+  'Pragma': 'no-cache',
+  'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'same-origin',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1',
+  'Cookie': 'over18=yes',
+};
+
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 
 // Narou API fields: t=title w=writer s=story n=ncode gl=general_lastup end=end ga=general_all_no gp=global_point ah=all_hyoka_cnt
@@ -115,54 +135,94 @@ app.get('/api/novel/:ncode', async (req, res) => {
   }
 });
 
-function parseTocHtml(html, ncode) {
-  const $ = cheerio.load(html);
-  const chapters = [];
-  $('.p-eplist__sublist').each((_, el) => {
-    const link = $(el).find('a.p-eplist__subtitle').first();
-    const href = link.attr('href') || '';
-    const match = href.match(/\/(\d+)\/?$/);
-    if (!match) return;
-    const chNum = parseInt(match[1]);
-    const dateText = $(el).find('.p-eplist__update').first().text()
-      .replace(/（改）[\s\S]*/, '').replace(/\s+/g, ' ').trim();
-    chapters.push({ id: `${ncode}-${chNum}`, title: link.text().trim(), number: chNum, content: '', publishDate: dateText });
-  });
-  // Detect if there are more pages (Narou paginates at 100 episodes)
-  const totalPages = parseInt($('.c-pager__item--last').attr('href')?.match(/p=(\d+)/)?.[1] || '1');
-  return { chapters, totalPages };
-}
-
-// GET /api/novel/:ncode/chapters - scrape TOC from syosetu (all pages)
+// GET /api/novel/:ncode/chapters
+// 优先使用 Narou 官方 API 生成章节列表（不被封锁），再用 HTML 抓取补充日期
 app.get('/api/novel/:ncode/chapters', async (req, res) => {
   try {
     const ncode = req.params.ncode.toLowerCase();
-    const url = `${NAROU_CONTENT}/${ncode}/`;
-    const htmlRes = await axios.get(url, { headers: { 'User-Agent': UA } });
-    const { chapters, totalPages } = parseTocHtml(htmlRes.data, ncode);
 
-    // Fetch additional pages if any (Narou paginates at 100 episodes per page)
-    if (totalPages > 1) {
-      const pagePromises = [];
-      for (let p = 2; p <= Math.min(totalPages, 10); p++) {
-        pagePromises.push(axios.get(`${url}?p=${p}`, { headers: { 'User-Agent': UA } }));
+    // Step 1: 通过官方 API 获取章节总数
+    const metaRes = await axios.get(NAROU_API, {
+      params: { of: 't-n-ga-gl-end', out: 'json', ncode },
+      headers: { 'User-Agent': UA },
+    });
+    const items = (metaRes.data || []).slice(1);
+
+    if (!items.length) {
+      return res.status(404).json({ error: 'Novel not found' });
+    }
+
+    const meta = items[0];
+    const totalChapters = meta.general_all_no || 0;
+    const title = meta.title || '';
+
+    // 短篇小说（general_all_no === 0）
+    if (totalChapters === 0) {
+      return res.json([{ id: `${ncode}-0`, title, number: 0, content: '', publishDate: meta.general_lastup || '' }]);
+    }
+
+    // Step 2: 生成章节列表（编号 1 到 totalChapters）
+    // 尝试从 HTML 抓取章节标题和日期（如果失败则用编号代替）
+    let chapters = [];
+    try {
+      const url = `${NAROU_CONTENT}/${ncode}/`;
+      const htmlRes = await axios.get(url, {
+        headers: BROWSER_HEADERS,
+        timeout: 8000,
+      });
+      const $ = cheerio.load(htmlRes.data);
+      $('.p-eplist__sublist').each((_, el) => {
+        const link = $(el).find('a.p-eplist__subtitle').first();
+        const href = link.attr('href') || '';
+        const match = href.match(/\/(\d+)\/?$/);
+        if (!match) return;
+        const chNum = parseInt(match[1]);
+        const rawTitle = link.text().trim();
+        // 如果标题只是数字（syosetu 新版 UI），用 "第N话" 格式
+        const chTitle = rawTitle && !/^\d+$/.test(rawTitle) ? rawTitle : `第${chNum}話`;
+        const dateText = $(el).find('.p-eplist__update').first().text()
+          .replace(/（改）[\s\S]*/, '').replace(/\s+/g, ' ').trim();
+        chapters.push({ id: `${ncode}-${chNum}`, title: chTitle, number: chNum, content: '', publishDate: dateText });
+      });
+
+      // 处理分页（超过 100 话时）
+      const totalPages = parseInt($('.c-pager__item--last').attr('href')?.match(/p=(\d+)/)?.[1] || '1');
+      if (totalPages > 1) {
+        const pagePromises = [];
+        for (let p = 2; p <= Math.min(totalPages, 10); p++) {
+          pagePromises.push(axios.get(`${url}?p=${p}`, { headers: BROWSER_HEADERS, timeout: 8000 }));
+        }
+        const pageResults = await Promise.allSettled(pagePromises);
+        for (const pr of pageResults) {
+          if (pr.status === 'fulfilled') {
+            const $p = cheerio.load(pr.value.data);
+            $p('.p-eplist__sublist').each((_, el) => {
+              const link = $p(el).find('a.p-eplist__subtitle').first();
+              const href = link.attr('href') || '';
+              const match = href.match(/\/(\d+)\/?$/);
+              if (!match) return;
+              const chNum = parseInt(match[1]);
+              const rawTitle = link.text().trim();
+              const chTitle = rawTitle && !/^\d+$/.test(rawTitle) ? rawTitle : `第${chNum}話`;
+              const dateText = $p(el).find('.p-eplist__update').first().text()
+                .replace(/（改）[\s\S]*/, '').replace(/\s+/g, ' ').trim();
+              chapters.push({ id: `${ncode}-${chNum}`, title: chTitle, number: chNum, content: '', publishDate: dateText });
+            });
+          }
+        }
       }
-      const pageResults = await Promise.all(pagePromises);
-      for (const pr of pageResults) {
-        const { chapters: more } = parseTocHtml(pr.data, ncode);
-        chapters.push(...more);
+    } catch (scrapeErr) {
+      console.warn('HTML scrape failed, falling back to API-generated list:', scrapeErr.message);
+    }
+
+    // Step 3: 如果 HTML 抓取失败或章节数不匹配，用 API 数据生成
+    if (chapters.length === 0) {
+      for (let i = 1; i <= totalChapters; i++) {
+        chapters.push({ id: `${ncode}-${i}`, title: `第${i}話`, number: i, content: '', publishDate: '' });
       }
     }
 
     chapters.sort((a, b) => a.number - b.number);
-
-    // If no episode links found, this is likely a tanpen (short story) — serve it as a single chapter
-    if (!chapters.length) {
-      const $ = cheerio.load(htmlRes.data);
-      const title = $('h1').first().text().trim() || '本文';
-      chapters.push({ id: `${ncode}-0`, title, number: 0, content: '', publishDate: '' });
-    }
-
     res.json(chapters);
   } catch (err) {
     console.error('chapters error:', err.message);
@@ -181,44 +241,66 @@ app.get('/api/novel/:ncode/chapter/:num', async (req, res) => {
     const url = num === 0
       ? `${NAROU_CONTENT}/${ncode}/`
       : `${NAROU_CONTENT}/${ncode}/${num}/`;
-    const htmlRes = await axios.get(url, { headers: { 'User-Agent': UA } });
+
+    // 使用完整浏览器请求头，加上正确的 Referer
+    const headers = {
+      ...BROWSER_HEADERS,
+      'Referer': num === 0
+        ? 'https://syosetu.com/'
+        : `${NAROU_CONTENT}/${ncode}/`,
+    };
+
+    const htmlRes = await axios.get(url, { headers, timeout: 10000 });
     const $ = cheerio.load(htmlRes.data);
 
+    // 检测是否被重定向到错误页
+    if (htmlRes.status !== 200) {
+      return res.status(502).json({ error: `Upstream ${htmlRes.status}` });
+    }
+
     // New Narou UI uses .p-novel__title, old uses .novel_subtitle
-    const title = $('.p-novel__title').first().text().trim()
+    const rawTitle = $('.p-novel__title').first().text().trim()
       || $('.novel_subtitle').text().trim();
+    // 如果标题只是数字，用 "第N话" 格式
+    const title = rawTitle && !/^\d+$/.test(rawTitle) ? rawTitle : `第${num}話`;
 
     // Extract body text — new UI: .js-novel-text p, old UI: #novel_honbun p
     const bodySelector = $('.js-novel-text').length ? '.js-novel-text p' : '#novel_honbun p';
     const lines = [];
     $(bodySelector).each((_, el) => {
-      // Preserve ruby readings inline, get plain text
-      const text = $(el).text();
-      lines.push(text);
+      // Remove ruby readings (furigana), get plain text
+      $(el).find('rt, rp').remove();
+      const text = $(el).text().trim();
+      if (text) lines.push(text);
     });
 
     // Fallback if still empty
     if (!lines.length) {
       $('.p-novel__body p, #novel_honbun p').each((_, el) => {
-        lines.push($(el).text());
+        $(el).find('rt, rp').remove();
+        const text = $(el).text().trim();
+        if (text) lines.push(text);
       });
     }
 
     const content = lines.join('\n\n');
 
-    // Get publish date
-    const dateText = $('.p-eplist__update').first().text().replace(/（改）[\s\S]*/, '').trim()
-      || $('meta[property="article:published_time"]').attr('content') || '';
+    // Get publish date from meta tag
+    const dateText = $('meta[property="article:published_time"]').attr('content')?.split('T')[0] || '';
 
     res.json({
       id: `${ncode}-${num}`,
-      title: title || `第${num}話`,
+      title,
       number: num,
       content: content.trim(),
       publishDate: dateText,
     });
   } catch (err) {
     console.error('chapter content error:', err.message);
+    // 如果是 403，返回更友好的错误
+    if (err.response?.status === 403) {
+      return res.status(503).json({ error: 'Content temporarily unavailable (upstream blocked). Please try again later.' });
+    }
     res.status(500).json({ error: 'Failed to fetch chapter content' });
   }
 });
