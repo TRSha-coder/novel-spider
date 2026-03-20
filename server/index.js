@@ -12,6 +12,7 @@ const NAROU_RANK_API = 'https://api.syosetu.com/rank/rankget/';
 const NAROU_CONTENT = 'https://ncode.syosetu.com';
 
 // 模拟真实浏览器请求头，绕过 syosetu 的 IP 封锁
+// syosetu 根据 X-Forwarded-For 判断地区，伪造日本 IP 可绕过封锁
 const BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -29,6 +30,9 @@ const BROWSER_HEADERS = {
   'Sec-Fetch-User': '?1',
   'Upgrade-Insecure-Requests': '1',
   'Cookie': 'over18=yes',
+  // 伪造日本 IP，绕过 syosetu 的地区封锁
+  'X-Forwarded-For': '126.0.0.1',
+  'X-Real-IP': '126.0.0.1',
 };
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
