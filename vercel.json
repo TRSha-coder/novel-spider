@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "regions": ["hnd1"],
   "rewrites": [
+    { "source": "/api/debug", "destination": "/api/index" },
     { "source": "/api/popular", "destination": "/api/index" },
     { "source": "/api/latest", "destination": "/api/index" },
     { "source": "/api/search", "destination": "/api/index" },
