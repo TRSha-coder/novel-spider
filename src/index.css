@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 沉浸式翻译插件：翻译内容始终从下一行显示 */
+.immersive-translate-target-wrapper,
+.immersive-translate-target-translation-theme-none,
+.immersive-translate-target-wrapper font[class*="immersive-translate"],
+[data-immersive-translate-walked] .immersive-translate-target-wrapper {
+  display: block !important;
+}
+
 body {
   margin: 0;
   padding: 0;
