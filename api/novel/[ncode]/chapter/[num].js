@@ -25,7 +25,6 @@ function stripHtml(html) {
   ).trim();
 }
 
-// Extract all <p> text from a chunk of HTML
 function extractParagraphs(html) {
   const results = [];
   const re = /<p[^>]*>([\s\S]*?)<\/p>/gi;
@@ -37,7 +36,6 @@ function extractParagraphs(html) {
   return results;
 }
 
-// Find the content section by class name (handle multiple classes)
 function getSectionByClass(html, className) {
   const startRe = new RegExp(`<div[^>]+class="[^"]*${className}[^"]*"[^>]*>`, 'i');
   const startM = startRe.exec(html);
@@ -57,7 +55,6 @@ function getSectionByClass(html, className) {
 export default async function handler(req) {
   const url = new URL(req.url);
   const parts = url.pathname.split('/').filter(Boolean);
-  // expected: ['api', 'novel', ncode, 'chapter', num]
   const ncode = (parts[2] || '').toLowerCase();
   const num = parseInt(parts[4] ?? '0');
   if (!ncode || isNaN(num) || num < 0) {
@@ -78,34 +75,32 @@ export default async function handler(req) {
         throw new Error(`Status ${r.status}`);
       }
     } catch (err) {
-      console.error('Direct fetch failed, trying proxy:', err.message);
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(chapterUrl)}`;
+      console.error('Direct fetch failed, trying Google Translate proxy:', err.message);
+      // Use Google Translate as a proxy (goog-domain variant)
+      const proxyDomain = chapterUrl.replace('https://', '').replace(/\//g, '-').replace(/\./g, '-') + '.translate.goog';
+      const proxyUrl = `https://${proxyDomain}${num === 0 ? '/' : '/' + num + '/'}?_x_tr_sl=ja&_x_tr_tl=en`;
+      
       const pr = await fetch(proxyUrl);
       if (!pr.ok) return Response.json({ error: 'Upstream blocked and proxy failed' }, { status: 502 });
-      const json = await pr.json();
-      html = json.contents;
+      html = await pr.text();
     }
 
-    // Title: new UI = h1.p-novel__title, old UI = p.novel_subtitle
     let title = '';
     const titleM =
       html.match(/<h1[^>]+class="[^"]*p-novel__title[^"]*"[^>]*>([\s\S]*?)<\/h1>/i) ||
       html.match(/<p[^>]+class="[^"]*novel_subtitle[^"]*"[^>]*>([\s\S]*?)<\/p>/i);
     if (titleM) title = stripHtml(titleM[1]);
 
-    // Content: try js-novel-text → p-novel__body → #novel_honbun
     let lines = [];
     const novelTextSection = getSectionByClass(html, 'js-novel-text');
     if (novelTextSection) {
       lines = extractParagraphs(novelTextSection);
     } else {
-      // Fallback: find paragraphs after the honbun marker
       const honbunM = html.match(/id="novel_honbun"[^>]*>([\s\S]*?)<\/div>/i) ||
                       html.match(/class="[^"]*p-novel__body[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
       if (honbunM) lines = extractParagraphs(honbunM[1]);
     }
 
-    // Last fallback: extract ALL paragraph content from the body
     if (!lines.length) {
       const bodyM = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
       if (bodyM) lines = extractParagraphs(bodyM[1]).slice(0, 500);

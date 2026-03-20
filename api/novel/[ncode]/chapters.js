@@ -23,7 +23,6 @@ function stripTags(html) {
 
 function parseToc(html, ncode) {
   const chapters = [];
-  // Match all <a> tags that have p-eplist__subtitle in their class
   const tagRe = /<a\s([^>]*)>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = tagRe.exec(html)) !== null) {
@@ -39,10 +38,8 @@ function parseToc(html, ncode) {
 }
 
 function detectTotalPages(html) {
-  // Look for last-page link in pagination
   const m = html.match(/c-pager__item--last[^>]*href="[^"]*[?&]p=(\d+)"/);
   if (m) return parseInt(m[1]);
-  // Alt: look for href="?p=N" patterns and take the max
   const pageNums = [...html.matchAll(/href="\?p=(\d+)"/g)].map(x => parseInt(x[1]));
   return pageNums.length ? Math.max(...pageNums) : 1;
 }
@@ -50,7 +47,6 @@ function detectTotalPages(html) {
 export default async function handler(req) {
   const url = new URL(req.url);
   const parts = url.pathname.split('/').filter(Boolean);
-  // expected: ['api', 'novel', ncode, 'chapters']
   const ncode = (parts[2] || '').toLowerCase();
   if (!ncode) return Response.json({ error: 'Missing ncode' }, { status: 400 });
 
@@ -65,30 +61,28 @@ export default async function handler(req) {
         throw new Error(`Status ${r.status}`);
       }
     } catch (err) {
-      console.error('Direct TOC fetch failed, trying proxy:', err.message);
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(tocUrl)}`;
+      console.error('Direct TOC fetch failed, trying Google Translate proxy:', err.message);
+      const proxyUrl = `https://ncode-syosetu-com.translate.goog/${ncode}/?_x_tr_sl=ja&_x_tr_tl=en`;
       const pr = await fetch(proxyUrl);
       if (!pr.ok) return Response.json({ error: 'Upstream blocked and proxy failed' }, { status: 502 });
-      const json = await pr.json();
-      html = json.contents;
+      html = await pr.text();
     }
 
     let chapters = parseToc(html, ncode);
-
-    // Fetch additional pages if paginated (Narou: 100 ep/page)
     const totalPages = detectTotalPages(html);
     if (totalPages > 1) {
       const extra = await Promise.all(
-        Array.from({ length: Math.min(totalPages, 10) - 1 }, (_, i) =>
-          fetch(`${tocUrl}?p=${i + 2}`, { headers: HEADERS }).then(x => x.text())
-        )
+        Array.from({ length: Math.min(totalPages, 10) - 1 }, (_, i) => {
+          const p = i + 2;
+          const pUrl = `${tocUrl}?p=${p}`;
+          const proxyPUrl = `https://ncode-syosetu-com.translate.goog/${ncode}/?p=${p}&_x_tr_sl=ja&_x_tr_tl=en`;
+          return fetch(proxyPUrl).then(x => x.text());
+        })
       );
       for (const pageHtml of extra) chapters.push(...parseToc(pageHtml, ncode));
     }
 
     chapters.sort((a, b) => a.number - b.number);
-
-    // Tanpen fallback: no episode list → single chapter at num=0
     if (!chapters.length) {
       const titleM = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
       const title = titleM ? stripTags(titleM[1]) : '本文';
