@@ -1,6 +1,7 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "regions": ["hnd1"],
   "rewrites": [
     { "source": "/api/popular", "destination": "/api/index" },
     { "source": "/api/latest", "destination": "/api/index" },
