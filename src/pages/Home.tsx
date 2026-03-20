@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Novel } from '../types';
 import { NovelCard } from '../components/NovelCard';
 import { getPopularNovels, getLatestNovels } from '../api';
-import { TrendingUp, Clock, BookOpen, Trash2 } from 'lucide-react';
+import { TrendingUp, Clock, BookOpen, Trash2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { getHistory, clearHistory, ReadingRecord } from '../hooks/useReadingProgress';
 
 export const Home = () => {
@@ -11,23 +11,28 @@ export const Home = () => {
   const [latestNovels, setLatestNovels] = useState<Novel[]>([]);
   const [history, setHistory] = useState<ReadingRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [popular, latest] = await Promise.all([
+        getPopularNovels(),
+        getLatestNovels(),
+      ]);
+      setPopularNovels(popular);
+      setLatestNovels(latest);
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+      setError('数据加载失败，请检查网络连接后重试。');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     setHistory(getHistory());
-    const fetchData = async () => {
-      try {
-        const [popular, latest] = await Promise.all([
-          getPopularNovels(),
-          getLatestNovels(),
-        ]);
-        setPopularNovels(popular);
-        setLatestNovels(latest);
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
@@ -38,8 +43,26 @@ export const Home = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl text-gray-600">加载中...</div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
+        <p className="text-gray-500 text-lg">正在加载小说列表...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 px-4">
+        <AlertCircle className="h-12 w-12 text-red-400" />
+        <p className="text-gray-700 text-lg font-semibold">加载失败</p>
+        <p className="text-gray-500 text-sm text-center max-w-md">{error}</p>
+        <button
+          onClick={fetchData}
+          className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span>重新加载</span>
+        </button>
       </div>
     );
   }
@@ -74,6 +97,11 @@ export const Home = () => {
                   src={record.novelCover}
                   alt={record.novelTitle}
                   className="w-12 h-16 object-cover rounded flex-shrink-0"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = `https://placehold.co/48x64/4f46e5/ffffff?text=${encodeURIComponent((record.novelTitle || '').slice(0, 4))}`;
+                  }}
                 />
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-800 text-sm line-clamp-2">{record.novelTitle}</p>
@@ -92,11 +120,15 @@ export const Home = () => {
           <TrendingUp className="h-8 w-8 text-indigo-600" />
           <h2 className="text-2xl font-bold text-gray-800">热门小说</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-          {popularNovels.map((novel) => (
-            <NovelCard key={novel.id} novel={novel} />
-          ))}
-        </div>
+        {popularNovels.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {popularNovels.map((novel) => (
+              <NovelCard key={novel.id} novel={novel} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-400 text-center py-8">暂无数据</p>
+        )}
       </div>
 
       {/* 最新更新 */}
@@ -105,11 +137,15 @@ export const Home = () => {
           <Clock className="h-8 w-8 text-purple-600" />
           <h2 className="text-2xl font-bold text-gray-800">最新更新</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-          {latestNovels.map((novel) => (
-            <NovelCard key={novel.id} novel={novel} />
-          ))}
-        </div>
+        {latestNovels.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {latestNovels.map((novel) => (
+              <NovelCard key={novel.id} novel={novel} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-400 text-center py-8">暂无数据</p>
+        )}
       </div>
 
     </div>

@@ -35,6 +35,11 @@ export const NovelCard = ({ novel }: NovelCardProps) => {
             src={novel.cover}
             alt={novel.title}
             className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = `https://placehold.co/300x400/4f46e5/ffffff?text=${encodeURIComponent((novel.title || '').slice(0, 6))}`;
+            }}
           />
           <div className="absolute top-2 right-2">
             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${

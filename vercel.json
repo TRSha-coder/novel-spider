@@ -5,6 +5,9 @@
     { "source": "/api/popular", "destination": "/api/index" },
     { "source": "/api/latest", "destination": "/api/index" },
     { "source": "/api/search", "destination": "/api/index" },
-    { "source": "/api/novel/:ncode", "destination": "/api/index" }
+    { "source": "/api/novel/:ncode/chapters", "destination": "/api/novel/[ncode]/chapters" },
+    { "source": "/api/novel/:ncode/chapter/:num", "destination": "/api/novel/[ncode]/chapter/[num]" },
+    { "source": "/api/novel/:ncode", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
