@@ -128,19 +128,25 @@ app.get('/api/debug', async (req, res) => {
   try {
     const r = await axios.get('https://api.ipify.org?format=json', { timeout: 5000 });
     const ip = r.data.ip;
-    // 测试 syosetu 是否可访问
-    let syosetuStatus = 'unknown';
+    const results = { vercelIP: ip };
+    // 测试直接访问 syosetu
     try {
       const sr = await axios.get('https://ncode.syosetu.com/n6764lx/1/', {
-        headers: BROWSER_HEADERS,
-        timeout: 8000,
-        maxRedirects: 5,
+        headers: BROWSER_HEADERS, timeout: 8000, maxRedirects: 5,
       });
-      syosetuStatus = `${sr.status} (${sr.data.length} bytes)`;
-    } catch (e) {
-      syosetuStatus = `${e.response?.status || 'error'}: ${e.message}`;
-    }
-    res.json({ vercelIP: ip, syosetuStatus });
+      results.direct = `${sr.status} (${sr.data.length} bytes)`;
+    } catch (e) { results.direct = `${e.response?.status || 'error'}: ${e.message}`; }
+    // 测试通过 allorigins 代理
+    try {
+      const pr = await axios.get(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://ncode.syosetu.com/n6764lx/1/')}`, { timeout: 10000 });
+      results.allorigins = `${pr.status} (${pr.data.length} bytes)`;
+    } catch (e) { results.allorigins = `${e.response?.status || 'error'}: ${e.message}`; }
+    // 测试通过 corsproxy.io 代理
+    try {
+      const cr = await axios.get(`https://corsproxy.io/?${encodeURIComponent('https://ncode.syosetu.com/n6764lx/1/')}`, { timeout: 10000 });
+      results.corsproxy = `${cr.status} (${cr.data.length} bytes)`;
+    } catch (e) { results.corsproxy = `${e.response?.status || 'error'}: ${e.message}`; }
+    res.json(results);
   } catch (e) {
     res.json({ error: e.message });
   }
