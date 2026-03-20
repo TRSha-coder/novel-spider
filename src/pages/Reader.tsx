@@ -31,6 +31,7 @@ export const Reader = () => {
   const tocRef = useRef<HTMLDivElement>(null);
   const currentItemRef = useRef<HTMLButtonElement>(null);
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   // 持久化字体大小
   const changeFontSize = (delta: number) => {
@@ -138,12 +139,16 @@ export const Reader = () => {
     const currentIndex = chapters.findIndex(c => c.id === chapterId);
     const onTouchStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
     };
     const onTouchEnd = (e: TouchEvent) => {
-      if (touchStartX.current === null) return;
+      if (touchStartX.current === null || touchStartY.current === null) return;
       const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = e.changedTouches[0].clientY - touchStartY.current;
       touchStartX.current = null;
-      if (Math.abs(dx) < 60) return; // 忽略小幅滑动
+      touchStartY.current = null;
+      // 忽略小幅滑动，且仅在水平滑动幅度大于垂直滑动时才切换章节
+      if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx)) return;
       if (dx < 0) {
         // 向左滑 → 下一话
         const next = chapters[currentIndex + 1];
