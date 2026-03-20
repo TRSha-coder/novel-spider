@@ -271,19 +271,27 @@ app.get('/api/novel/:ncode/chapter/:num', async (req, res) => {
     if (isNaN(num) || num < 0) return res.status(400).json({ error: 'Invalid chapter number' });
 
     // num=0 is used for tanpen (short story at root URL)
-    const url = num === 0
+    const targetUrl = num === 0
       ? `${NAROU_CONTENT}/${ncode}/`
       : `${NAROU_CONTENT}/${ncode}/${num}/`;
 
-    // 使用完整浏览器请求头，加上正确的 Referer
-    const headers = {
-      ...BROWSER_HEADERS,
-      'Referer': num === 0
-        ? 'https://syosetu.com/'
-        : `${NAROU_CONTENT}/${ncode}/`,
-    };
+    // 直接访问失败时，通过 allorigins 代理绕过 syosetu 对云服务商 IP 的封锁
+    let htmlData;
+    try {
+      const directRes = await axios.get(targetUrl, {
+        headers: { ...BROWSER_HEADERS, 'Referer': num === 0 ? 'https://syosetu.com/' : `${NAROU_CONTENT}/${ncode}/` },
+        timeout: 8000,
+      });
+      htmlData = directRes.data;
+    } catch (directErr) {
+      // 直接访问失败（403/超时），改用 allorigins 代理
+      console.log(`Direct access failed (${directErr.response?.status || directErr.code}), trying allorigins proxy...`);
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      const proxyRes = await axios.get(proxyUrl, { timeout: 15000 });
+      htmlData = proxyRes.data;
+    }
 
-    const htmlRes = await axios.get(url, { headers, timeout: 10000 });
+    const htmlRes = { data: htmlData, status: 200 };
     const $ = cheerio.load(htmlRes.data);
 
     // 检测是否被重定向到错误页
