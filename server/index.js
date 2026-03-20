@@ -199,11 +199,20 @@ app.get('/api/novel/:ncode/chapters', async (req, res) => {
     let chapters = [];
     try {
       const url = `${NAROU_CONTENT}/${ncode}/`;
-      const htmlRes = await axios.get(url, {
-        headers: BROWSER_HEADERS,
-        timeout: 8000,
-      });
-      const $ = cheerio.load(htmlRes.data);
+      let htmlData;
+      try {
+        const htmlRes = await axios.get(url, {
+          headers: BROWSER_HEADERS,
+          timeout: 8000,
+        });
+        htmlData = htmlRes.data;
+      } catch (err) {
+        console.log(`Direct TOC fetch failed (${err.response?.status || err.code}), trying allorigins proxy...`);
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const proxyRes = await axios.get(proxyUrl, { timeout: 15000 });
+        htmlData = proxyRes.data.contents;
+      }
+      const $ = cheerio.load(htmlData);
       $('.p-eplist__sublist').each((_, el) => {
         const link = $(el).find('a.p-eplist__subtitle').first();
         const href = link.attr('href') || '';
@@ -286,9 +295,9 @@ app.get('/api/novel/:ncode/chapter/:num', async (req, res) => {
     } catch (directErr) {
       // 直接访问失败（403/超时），改用 allorigins 代理
       console.log(`Direct access failed (${directErr.response?.status || directErr.code}), trying allorigins proxy...`);
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
       const proxyRes = await axios.get(proxyUrl, { timeout: 15000 });
-      htmlData = proxyRes.data;
+      htmlData = proxyRes.data.contents;
     }
 
     const htmlRes = { data: htmlData, status: 200 };

@@ -69,9 +69,22 @@ export default async function handler(req) {
       ? `https://ncode.syosetu.com/${ncode}/`
       : `https://ncode.syosetu.com/${ncode}/${num}/`;
 
-    const r = await fetch(chapterUrl, { headers: HEADERS });
-    if (!r.ok) return Response.json({ error: `Upstream ${r.status}` }, { status: 502 });
-    const html = await r.text();
+    let html = '';
+    try {
+      const r = await fetch(chapterUrl, { headers: HEADERS });
+      if (r.ok) {
+        html = await r.text();
+      } else {
+        throw new Error(`Status ${r.status}`);
+      }
+    } catch (err) {
+      console.error('Direct fetch failed, trying proxy:', err.message);
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(chapterUrl)}`;
+      const pr = await fetch(proxyUrl);
+      if (!pr.ok) return Response.json({ error: 'Upstream blocked and proxy failed' }, { status: 502 });
+      const json = await pr.json();
+      html = json.contents;
+    }
 
     // Title: new UI = h1.p-novel__title, old UI = p.novel_subtitle
     let title = '';

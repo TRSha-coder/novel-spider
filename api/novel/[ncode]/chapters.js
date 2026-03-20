@@ -56,9 +56,22 @@ export default async function handler(req) {
 
   try {
     const tocUrl = `https://ncode.syosetu.com/${ncode}/`;
-    const r = await fetch(tocUrl, { headers: HEADERS });
-    if (!r.ok) return Response.json({ error: `Upstream ${r.status}` }, { status: 502 });
-    const html = await r.text();
+    let html = '';
+    try {
+      const r = await fetch(tocUrl, { headers: HEADERS });
+      if (r.ok) {
+        html = await r.text();
+      } else {
+        throw new Error(`Status ${r.status}`);
+      }
+    } catch (err) {
+      console.error('Direct TOC fetch failed, trying proxy:', err.message);
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(tocUrl)}`;
+      const pr = await fetch(proxyUrl);
+      if (!pr.ok) return Response.json({ error: 'Upstream blocked and proxy failed' }, { status: 502 });
+      const json = await pr.json();
+      html = json.contents;
+    }
 
     let chapters = parseToc(html, ncode);
 
