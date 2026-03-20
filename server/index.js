@@ -50,7 +50,7 @@ function formatNovel(n) {
     title: n.title || '',
     author: n.writer || '',
     description: n.story || '',
-    cover: `https://placehold.co/300x400/1a1a2e/ffffff?text=${encodeURIComponent((n.title || '').slice(0, 8))}`,
+    cover: `https://placehold.co/300x400/1a1a2e/ffffff?text=Novel`,
     status: n.end === 1 ? 'completed' : 'ongoing',
     views: globalPoint,
     rating,
