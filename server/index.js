@@ -123,6 +123,29 @@ app.get('/api/search', async (req, res) => {
 });
 
 // GET /api/novel/:ncode - novel metadata
+// 调试端点：检查 Vercel 函数的出口 IP
+app.get('/api/debug', async (req, res) => {
+  try {
+    const r = await axios.get('https://api.ipify.org?format=json', { timeout: 5000 });
+    const ip = r.data.ip;
+    // 测试 syosetu 是否可访问
+    let syosetuStatus = 'unknown';
+    try {
+      const sr = await axios.get('https://ncode.syosetu.com/n6764lx/1/', {
+        headers: BROWSER_HEADERS,
+        timeout: 8000,
+        maxRedirects: 5,
+      });
+      syosetuStatus = `${sr.status} (${sr.data.length} bytes)`;
+    } catch (e) {
+      syosetuStatus = `${e.response?.status || 'error'}: ${e.message}`;
+    }
+    res.json({ vercelIP: ip, syosetuStatus });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
+
 app.get('/api/novel/:ncode', async (req, res) => {
   try {
     const ncode = req.params.ncode.toLowerCase();
